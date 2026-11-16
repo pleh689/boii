@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talking Barcode Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+    }
+    #reader {
+      width: 100%;
+      max-width: 500px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #2e7d32;
+      word-break: break-all;
+    }
+    button {
+      margin-top: 15px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Talking Barcode Scanner</h2>
+  <div id="reader"></div>
+  <div id="result">Waiting for scan...</div>
+  <button id="enableAudioBtn">Tap to Enable Audio</button>
+
+  <script src="https://unpkg.com"></script>
+  <script>
+    let lastScanned = "";
+    let lastScanTime = 0;
+
+    // Function to speak text out loud
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Stop any speech currently playing
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0; // Normal speaking speed
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Mobile browsers require a user tap to unlock audio playback
+    document.getElementById('enableAudioBtn').addEventListener('click', function() {
+      speakText("Audio enabled");
+      this.style.display = "none";
+    });
+
+    function onScanSuccess(decodedText, decodedResult) {
+      const now = Date.now();
+      
+      // Prevent repeating the exact same barcode within 4 seconds
+      if (decodedText === lastScanned && (now - lastScanTime) < 4000) {
+        return;
+      }
+
+      lastScanned = decodedText;
+      lastScanTime = now;
+
+      document.getElementById('result').innerText = `Scanned: ${decodedText}`;
+      
+      // Format numbers with spaces so the voice reads digits clearly instead of "billions"
+      const textToSpeak = /^\d+$/.test(decodedText) 
+        ? decodedText.split('').join(' ') 
+        : decodedText;
+
+      speakText(textToSpeak);
+    }
+
+    function onScanFailure(error) {
+      // Ignore frame-by-frame scan misses
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: { width: 250, height: 150 } },
+      false
+    );
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  </script>
+
+</body>
+</html>
